@@ -1,2 +1,3 @@
 # enoaviator
 Pink Predictor
+streamlit
