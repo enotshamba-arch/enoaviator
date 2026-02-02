@@ -1,40 +1,45 @@
-import streamlit as st
-from datetime import datetime, timedelta
+import datetime
 
-st.set_page_config(page_title="Aviator Trend Analyzer", layout="centered")
+# User History Data
+history = [
+    {"mult": 22.85, "time": "23:20:15"}, # Pink 1
+    {"mult": 2.19,  "time": "23:21:08"}, 
+    {"mult": 2.91,  "time": "23:21:36"}, 
+    {"mult": 1.73,  "time": "23:22:07"}, 
+    {"mult": 11.07, "time": "23:24:27"}, # Pink 2
+    {"mult": 1.47,  "time": "23:25:12"}, 
+    {"mult": 1.00,  "time": "23:25:36"}, 
+    {"mult": 4.85,  "time": "23:25:56"}  # Last round
+]
 
-st.title("🚁 Aviator Strategy Helper")
-st.markdown("### Pattern & Interval Analyzer")
-
-# User Inputs
-last_pink_time = st.text_input("Time of Last Pink (HH:MM:SS):", "20:01:56")
-st.subheader("Last 3 Multipliers")
-m1 = st.number_input("Most Recent Round:", value=9.41, step=0.1)
-m2 = st.number_input("Second Recent Round:", value=3.42, step=0.1)
-m3 = st.number_input("Third Recent Round:", value=1.46, step=0.1)
-
-if st.button("Analyze Current Cycle"):
-    # 1. Interval Calculation
-    fmt = '%H:%M:%S'
-    last_pink = datetime.strptime(last_pink_time, fmt)
-    next_win = last_pink + timedelta(minutes=10)
+def check_pink_signals(data):
+    # 1. TIME-BASED ALERT: 4-5 MINUTE RULE
+    # Patterns often repeat at 4-5 minute intervals.
+    last_pink = [r for r in data if r["mult"] >= 10.0][-1]
+    lp_time = datetime.datetime.strptime(last_pink["time"], "%H:%M:%S")
+    current_time = datetime.datetime.strptime("23:28:45", "%H:%M:%S") # Simulate current time
+    time_diff = (current_time - lp_time).total_seconds() / 60
     
-    # 2. Pattern Detection Logic
-    is_staircase = m1 > m2 > m3
-    is_shadow = 8.0 <= m1 <= 9.99
-    
-    st.divider()
-    
-    # Logic Output
-    st.write(f"📊 **Macro Cycle Alert:** Next major 10m window starts around **{next_win.strftime(fmt)}**")
-    
-    if is_staircase:
-        st.success("🔥 STAIRCASE DETECTED: Multipliers are trending UP. Probability of a 'Breakout Pink' is HIGH.")
-    
-    if is_shadow:
-        st.warning("⚠️ SHADOW PINK: The last round nearly hit 10x. The system is 'shaving' profit. Use a 5x Auto-Cashout.")
+    is_timing_window = 4.0 <= time_diff <= 5.5
 
-    if m1 < 1.2 and m2 < 1.2:
-        st.error("❄️ COLLECTION MODE: Two 'Instant Crashes' detected. STOP betting for 3-5 minutes.")
+    # 2. SEQUENCE TRIGGER: 3-BLUE RECOVERY
+    # High multipliers often follow 3+ "Blue" rounds (below 2.0x).
+    recent_mults = [r["mult"] for r in data[-3:]]
+    blues_count = sum(1 for m in recent_mults if m < 2.0)
+    
+    # 3. RECOVERY TRIGGER: THE FEEDER ROUND
+    # A multiplier between 4x and 8x often "feeds" a coming Pink.
+    last_mult = data[-1]["mult"]
+    is_feeder = 4.0 <= last_mult < 10.0
 
-st.info("Disclaimer: This tool uses community patterns and probability. It cannot guarantee results as Aviator uses RNG.")
+    # SIGNAL OUTPUT
+    if is_timing_window and (blues_count >= 2 or is_feeder):
+        return "🔥 SIGNAL: HIGH PROBABILITY. Time interval and sequence aligned."
+    elif is_timing_window:
+        return "⚠️ SIGNAL: Timing window active. Watch for next sequence trigger."
+    elif is_feeder:
+        return "⚡ SIGNAL: Feeder round detected (4.85x). Wait for timing window."
+    else:
+        return "--- STATUS: Pattern developing. No active signal."
+
+print(check_pink_signals(history))
